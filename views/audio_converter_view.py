@@ -26,7 +26,7 @@ class AudioConverterView:
     def setup_window(self):
         """윈도우 기본 설정"""
         self.root.title("오디오/동영상 → 텍스트 변환기 + AI 요약")
-        self.root.geometry("650x800")
+        self.root.geometry("800x700")
         self.root.resizable(True, True)
     
     def create_widgets(self):
@@ -35,15 +35,16 @@ class AudioConverterView:
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
-        # 그리드 설정 (왼쪽:오른쪽 = 1:5 비율)
-        main_frame.columnconfigure(0, weight=1)
-        main_frame.columnconfigure(1, weight=5)
-        main_frame.rowconfigure(20, weight=1)  # 로그 영역이 확장되도록
+        # 그리드 설정 (왼쪽:오른쪽 = 2:3 비율로 변경)
+        main_frame.columnconfigure(0, weight=2)
+        main_frame.columnconfigure(1, weight=3)
+        main_frame.rowconfigure(0, weight=1)  # 메인 영역이 확장되도록
         
         # === 왼쪽 컬럼 ===
         left_frame = ttk.Frame(main_frame)
         left_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
         left_frame.columnconfigure(0, weight=1)
+        left_frame.rowconfigure(3, weight=1)  # 마지막 섹션이 확장되도록
         
         # 파일 선택 섹션
         file_frame = ttk.LabelFrame(left_frame, text="파일 선택", padding="5")
@@ -162,7 +163,7 @@ class AudioConverterView:
         text_scroll_frame.columnconfigure(0, weight=1)
         text_scroll_frame.rowconfigure(0, weight=1)
         
-        self.log_text = tk.Text(text_scroll_frame, height=15, wrap=tk.WORD)
+        self.log_text = tk.Text(text_scroll_frame, height=12, wrap=tk.WORD)
         scrollbar = ttk.Scrollbar(text_scroll_frame, orient=tk.VERTICAL, command=self.log_text.yview)
         self.log_text.configure(yscrollcommand=scrollbar.set)
         
