@@ -1,8 +1,9 @@
-# 오디오/동영상 → 텍스트 변환기 + AI 요약
+# 🎵 Audio-Text Converter with AI Summary
 
 ## 📖 프로젝트 소개
 
 이 프로젝트는 오디오 및 동영상 파일을 텍스트로 변환하고, LLM을 활용해 요약까지 제공하는 GUI 애플리케이션입니다.
+**MVC 패턴으로 구조화**되어 코드의 유지보수와 확장성을 높였습니다.
 
 ### ✨ 주요 기능
 
@@ -13,6 +14,27 @@
 - 🖱️ **드래그 앤 드롭**: 직관적인 파일 선택
 - 📄 **자막 생성**: SRT 형식 자막 파일 생성
 
+### 🏗️ 프로젝트 구조 (MVC 패턴)
+
+```
+audiotext/
+├── main.py                          # 메인 실행 파일
+├── models/                          # 데이터 모델 및 비즈니스 로직
+│   ├── __init__.py
+│   └── audio_processor.py           # 오디오 처리 클래스
+├── services/                        # 외부 서비스 연동
+│   ├── __init__.py
+│   └── llm_service.py              # LLM API 서비스
+├── views/                          # GUI 뷰 컴포넌트
+│   ├── __init__.py
+│   └── audio_converter_view.py     # 메인 GUI 클래스
+├── controllers/                    # MVC 컨트롤러
+│   ├── __init__.py
+│   └── audio_converter_controller.py
+├── ffmpeg-7.1.1-full_build/       # FFmpeg 바이너리
+└── api_keys.json                   # API 키 설정 파일
+```
+
 ### 🛠️ 기술 스택
 
 - **GUI**: tkinter, tkinterdnd2
@@ -20,12 +42,13 @@
 - **오디오 처리**: librosa, soundfile, ffmpeg
 - **AI 요약**: OpenAI GPT, Anthropic Claude, Google Gemini
 - **화자 분리**: 오디오 특성 기반 분석
+- **아키텍처**: MVC (Model-View-Controller) 패턴
 
 ## 🚀 설치 및 실행
 
 ### 1. 필수 요구사항
 - Python 3.8+
-- FFmpeg
+- FFmpeg (프로젝트에 포함됨)
 
 ### 2. 패키지 설치
 ```bash
@@ -38,7 +61,7 @@ pip install -r requirements.txt
 
 ### 4. 실행
 ```bash
-python audio_text_converter_gui_LMM.py
+python main.py
 ```
 
 ## 🔧 사용법
