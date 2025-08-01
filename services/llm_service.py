@@ -208,6 +208,27 @@ class LLMService:
         except Exception as e:
             raise ValueError(f"Anthropic 요약 중 오류 발생: {str(e)}")
     
+    def get_available_gemini_models(self, api_key: str) -> list:
+        """사용 가능한 Gemini 모델 목록 조회"""
+        try:
+            response = requests.get(
+                f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}",
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                models = []
+                for model in result.get('models', []):
+                    model_name = model.get('name', '')
+                    if 'generateContent' in model.get('supportedGenerationMethods', []):
+                        models.append(model_name.replace('models/', ''))
+                return models
+            else:
+                return []
+        except Exception:
+            return []
+    
     def summarize_with_gemini(self, text: str, api_key: str, summary_type: str = "general") -> Optional[str]:
         """Google Gemini를 사용한 텍스트 요약"""
         if not api_key or not api_key.strip():
@@ -216,56 +237,85 @@ class LLMService:
         try:
             prompt = self.get_summary_prompt(summary_type)
             
-            data = {
-                "contents": [
-                    {
-                        "parts": [
-                            {
-                                "text": f"{prompt}\n\n{text}"
-                            }
-                        ]
-                    }
-                ],
-                "generationConfig": {
-                    "temperature": 0.3,
-                    "topK": 32,
-                    "topP": 1,
-                    "maxOutputTokens": 2000
-                }
-            }
+            # 여러 모델을 시도해볼 수 있도록 모델 리스트 정의
+            models_to_try = [
+                "gemini-1.5-flash",
+                "gemini-1.5-pro", 
+                "gemini-pro",
+                "gemini-1.0-pro"
+            ]
             
-            response = requests.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}",
-                json=data,
-                timeout=60
-            )
+            last_error = None
             
-            if response.status_code == 200:
-                result = response.json()
-                if 'candidates' in result and len(result['candidates']) > 0:
-                    candidate = result['candidates'][0]
-                    if 'content' in candidate and 'parts' in candidate['content']:
-                        summary = candidate['content']['parts'][0]['text'].strip()
-                        return summary
-                    else:
-                        raise ValueError("Gemini API 응답 형식이 올바르지 않습니다.")
-                else:
-                    raise ValueError("Gemini API에서 응답을 생성하지 못했습니다.")
-            elif response.status_code == 401:
-                raise ValueError("Gemini API 키가 올바르지 않습니다.")
-            elif response.status_code == 429:
-                raise ValueError("Gemini API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.")
-            elif response.status_code == 402:
-                raise ValueError("Gemini API 크레딧이 부족합니다. 결제 정보를 확인해주세요.")
-            else:
-                error_msg = f"Gemini API 오류 (상태 코드: {response.status_code})"
+            for model_name in models_to_try:
                 try:
-                    error_detail = response.json().get('error', {}).get('message', '')
-                    if error_detail:
-                        error_msg += f": {error_detail}"
-                except:
-                    pass
-                raise ValueError(error_msg)
+                    data = {
+                        "contents": [
+                            {
+                                "parts": [
+                                    {
+                                        "text": f"{prompt}\n\n{text}"
+                                    }
+                                ]
+                            }
+                        ],
+                        "generationConfig": {
+                            "temperature": 0.3,
+                            "topK": 32,
+                            "topP": 1,
+                            "maxOutputTokens": 2000
+                        }
+                    }
+                    
+                    response = requests.post(
+                        f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}",
+                        json=data,
+                        timeout=60
+                    )
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        if 'candidates' in result and len(result['candidates']) > 0:
+                            candidate = result['candidates'][0]
+                            if 'content' in candidate and 'parts' in candidate['content']:
+                                summary = candidate['content']['parts'][0]['text'].strip()
+                                return summary
+                            else:
+                                raise ValueError("Gemini API 응답 형식이 올바르지 않습니다.")
+                        else:
+                            # 다음 모델 시도
+                            continue
+                    elif response.status_code == 404:
+                        # 모델을 찾을 수 없음, 다음 모델 시도
+                        continue
+                    else:
+                        # 다른 오류인 경우 저장
+                        last_error = response
+                        break
+                        
+                except requests.exceptions.RequestException:
+                    # 네트워크 오류인 경우 다음 모델 시도
+                    continue
+            
+            # 모든 모델 시도 실패 시 오류 처리
+            if last_error is not None:
+                if last_error.status_code == 401:
+                    raise ValueError("Gemini API 키가 올바르지 않습니다.")
+                elif last_error.status_code == 429:
+                    raise ValueError("Gemini API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.")
+                elif last_error.status_code == 402:
+                    raise ValueError("Gemini API 크레딧이 부족합니다. 결제 정보를 확인해주세요.")
+                else:
+                    error_msg = f"Gemini API 오류 (상태 코드: {last_error.status_code})"
+                    try:
+                        error_detail = last_error.json().get('error', {}).get('message', '')
+                        if error_detail:
+                            error_msg += f": {error_detail}"
+                    except:
+                        pass
+                    raise ValueError(error_msg)
+            else:
+                raise ValueError("사용 가능한 Gemini 모델을 찾을 수 없습니다. API 키를 확인해주세요.")
                 
         except requests.exceptions.Timeout:
             raise ValueError("Gemini API 요청 시간이 초과되었습니다.")
@@ -287,6 +337,12 @@ class LLMService:
     
     def test_api_key(self, api_type: str, api_key: str) -> bool:
         """API 키 테스트"""
+        if api_type == "gemini":
+            # Gemini의 경우 먼저 사용 가능한 모델이 있는지 확인
+            models = self.get_available_gemini_models(api_key)
+            if not models:
+                return False
+        
         test_text = "안녕하세요. 이것은 API 키 테스트입니다."
         
         try:
