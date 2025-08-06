@@ -70,14 +70,37 @@ class AudioConverterView:
                                   state="readonly", width=12)
         model_combo.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=2)
         
+        # 언어 선택
+        ttk.Label(options_frame, text="언어:").grid(row=2, column=0, sticky=tk.W, pady=2)
+        self.language_var = tk.StringVar(value="auto")
+        language_combo = ttk.Combobox(options_frame, textvariable=self.language_var,
+                                    values=["auto", "ko", "en", "ja", "zh", "es", "fr", "de", "it", "pt", "ru"],
+                                    state="readonly", width=12)
+        language_combo.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=2)
+        
+        # 언어 매핑 (표시용)
+        self.language_names = {
+            "auto": "자동 감지",
+            "ko": "한국어", 
+            "en": "영어",
+            "ja": "일본어",
+            "zh": "중국어",
+            "es": "스페인어", 
+            "fr": "프랑스어",
+            "de": "독일어",
+            "it": "이탈리아어",
+            "pt": "포르투갈어",
+            "ru": "러시아어"
+        }
+        
         # 화자 분리 옵션
         self.speaker_check = ttk.Checkbutton(options_frame, text="화자 분리", 
                                            variable=self.enable_speaker_diarization)
-        self.speaker_check.grid(row=2, column=0, sticky=tk.W, pady=5)
+        self.speaker_check.grid(row=4, column=0, sticky=tk.W, pady=5)
         
         # 변환 실행 버튼
         self.convert_btn = ttk.Button(options_frame, text="변환 시작", command=self.start_conversion)
-        self.convert_btn.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=5)
+        self.convert_btn.grid(row=5, column=0, sticky=(tk.W, tk.E), pady=5)
         
         # 요약 섹션
         summary_frame = ttk.LabelFrame(left_frame, text="AI 요약", padding="5")
@@ -228,8 +251,9 @@ class AudioConverterView:
         """변환 시작"""
         if 'on_convert_start' in self.callbacks:
             model = self.model_var.get()
+            language = self.language_var.get()
             speaker_diarization = self.enable_speaker_diarization.get()
-            self.callbacks['on_convert_start'](self.input_file, self.output_dir, model, speaker_diarization)
+            self.callbacks['on_convert_start'](self.input_file, self.output_dir, model, language, speaker_diarization)
     
     def summarize_text(self, api_type: str):
         """텍스트 요약"""
@@ -311,6 +335,10 @@ class AudioConverterView:
     def register_callback(self, event_name: str, callback: Callable):
         """콜백 함수 등록"""
         self.callbacks[event_name] = callback
+    
+    def get_selected_language(self) -> str:
+        """선택된 언어 반환"""
+        return self.language_var.get()
     
     def get_selected_model(self) -> str:
         """선택된 Whisper 모델 반환"""

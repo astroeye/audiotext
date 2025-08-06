@@ -53,7 +53,7 @@ class AudioConverterController:
         """폴더 선택 이벤트 처리"""
         self.view.log_message(f"출력 폴더 선택됨: {folder_path}")
     
-    def on_convert_start(self, input_file: str, output_dir: str, model: str, speaker_diarization: bool):
+    def on_convert_start(self, input_file: str, output_dir: str, model: str, language: str, speaker_diarization: bool):
         """변환 시작 이벤트 처리"""
         if not input_file:
             self.view.show_message("오류", "입력 파일을 선택해주세요.", "error")
@@ -66,7 +66,7 @@ class AudioConverterController:
         # 백그라운드에서 변환 실행
         thread = threading.Thread(
             target=self.convert_audio_to_text,
-            args=(input_file, output_dir, model, speaker_diarization),
+            args=(input_file, output_dir, model, language, speaker_diarization),
             daemon=True
         )
         thread.start()
@@ -117,7 +117,7 @@ class AudioConverterController:
             self.update_api_status()
             self.view.log_message("API 키가 업데이트되었습니다.")
     
-    def convert_audio_to_text(self, input_file: str, output_dir: str, model: str, speaker_diarization: bool):
+    def convert_audio_to_text(self, input_file: str, output_dir: str, model: str, language: str, speaker_diarization: bool):
         """오디오를 텍스트로 변환"""
         self.view.set_conversion_state(True)
         self.view.set_progress("변환 준비 중...", True)
@@ -132,7 +132,9 @@ class AudioConverterController:
             if audio_file != input_file:
                 self.temp_files.append(audio_file)
             
+            language_name = self.view.language_names.get(language, language)
             self.view.log_message(f"✅ 파일 검증 완료 (길이: {duration:.1f}초)")
+            self.view.log_message(f"🌐 언어 설정: {language_name}")
             
             # 2. 음성 인식 실행
             self.view.set_progress("음성 인식 중...")
@@ -140,6 +142,7 @@ class AudioConverterController:
                 audio_file, 
                 model, 
                 speaker_diarization,
+                language,
                 progress_callback=self.view.log_message
             )
             
